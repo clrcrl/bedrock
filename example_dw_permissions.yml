@@ -1,0 +1,91 @@
+managed_schemas:
+  - raw_monolith_api
+  - raw_zendesk
+  - raw_stripe
+  - looker_scratch
+
+groups:
+  loader: # E.g., fivetran, stitch, alooma
+      databases:
+        create:
+          - jaffle_shop
+
+  transformer_rw: # E.g., DBT
+    privileges:
+      databases:
+        create:
+          - jaffle_shop
+      schemas:
+        read:
+          - raw_monolith_api
+          - raw_zendesk
+          - raw_stripe
+      tables: # Granting at the table level not generally as useful, except for system tables
+        read:
+          - STV_WLM_SERVICE_CLASS_CONFIG
+          - SVV_TABLE_INFO
+          - STV_TBL_PERM
+          - STV_BLOCKLIST
+          - STL_LOAD_COMMITS
+
+  transformer_ro: # This is useful for DBT-developers
+      tables: # Granting at the table level not generally as useful, except for system tables
+        read:
+          - STV_WLM_SERVICE_CLASS_CONFIG
+          - SVV_TABLE_INFO
+          - STV_TBL_PERM
+          - STV_BLOCKLIST
+          - STL_LOAD_COMMITS
+
+  # Most of this groups permissions will be set by DBT
+  analyst_ro:
+      schemas:
+        read:
+          - looker_scratch
+      tables: # Granting at the table level not generally as useful, except for system tables
+        read:
+          - STV_WLM_SERVICE_CLASS_CONFIG
+          - SVV_TABLE_INFO
+          - STV_TBL_PERM
+          - STV_BLOCKLIST
+          - STL_LOAD_COMMITS
+
+users:
+  fivetran:
+    password: "{{ env['FIVETRAN_REDSHIFT_PASSWORD'] }}"
+    member_of:
+      - loader
+    owns:
+      schemas:
+          - raw_monolith_api
+          - raw_zendesk
+          - raw_stripe
+
+  sinter:
+    password: "{{ env['SINTER_REDSHIFT_PASSWORD'] }}"
+    member_of:
+      - transformer
+
+  claire: # Claire uses this when running queries from datagrip
+    password: "{{ env['CLAIRE_REDSHIFT_PASSWORD'] }}"
+    member_of:
+      - analyst
+      - transformer_ro
+
+  dbt: # Claire uses this when running dbt locally
+    password: "{{ env['DBT_REDSHIFT_PASSWORD'] }}"
+    member_of:
+      - transformer_rw
+
+  looker_pdt:
+    password: "{{ env['LOOKER_DBT_REDSHIFT_PASSWORD'] }}"
+    member_of:
+      - analyst_ro
+    owns:
+      schemas:
+          - looker_scratch
+
+  looker:
+    password: "{{ env['LOOKER_REDSHIFT_PASSWORD'] }}"
+    member_of:
+      - analyst_ro
