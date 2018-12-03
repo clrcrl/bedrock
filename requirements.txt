@@ -1,0 +1,6 @@
+click
+psycopg2-binary
+jinja2
+cerberus
+pyyaml
+argparse
