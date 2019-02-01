@@ -52,7 +52,8 @@ groups:
 
 users:
   fivetran:
-    password: "{{ env['FIVETRAN_REDSHIFT_PASSWORD'] }}"
+    attributes:
+      password: "{{ env['FIVETRAN_REDSHIFT_PASSWORD'] }}"
     member_of:
       - loader
     owns:
@@ -62,23 +63,27 @@ users:
           - raw_stripe
 
   sinter:
-    password: "{{ env['SINTER_REDSHIFT_PASSWORD'] }}"
+    attributes:
+      password: "{{ env['SINTER_REDSHIFT_PASSWORD'] }}"
     member_of:
       - transformer
 
   claire: # Claire uses this when running queries from datagrip
-    password: "{{ env['CLAIRE_REDSHIFT_PASSWORD'] }}"
+    attributes:
+      password: "{{ env['CLAIRE_REDSHIFT_PASSWORD'] }}"
     member_of:
       - analyst
       - transformer_ro
 
   dbt: # Claire uses this when running dbt locally
-    password: "{{ env['DBT_REDSHIFT_PASSWORD'] }}"
+    attributes:
+      password: "{{ env['DBT_REDSHIFT_PASSWORD'] }}"
     member_of:
       - transformer_rw
 
   looker_pdt:
-    password: "{{ env['LOOKER_DBT_REDSHIFT_PASSWORD'] }}"
+    attributes:
+      password: "{{ env['LOOKER_DBT_REDSHIFT_PASSWORD'] }}"
     member_of:
       - analyst_ro
     owns:
@@ -86,6 +91,7 @@ users:
           - looker_scratch
 
   looker:
-    password: "{{ env['LOOKER_REDSHIFT_PASSWORD'] }}"
+    attributes:
+      password: "{{ env['LOOKER_REDSHIFT_PASSWORD'] }}"
     member_of:
       - analyst_ro
