@@ -4,4 +4,11 @@ setup(
     name="bedrock",
     packages=["bedrock"],
     entry_points={"console_scripts": ["bedrock = bedrock.main:main"]},
+    install_requires=[
+        'psycopg2-binary',
+        'jinja2',
+        'cerberus',
+        'pyyaml',
+        'argparse',
+    ]
 )
