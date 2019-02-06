@@ -1,72 +1,111 @@
 from bedrock import common
 
-Q_GET_ALL_USER_ATTRIBUTES = """
+Q_GET_ALL_USERS = """
     SELECT
-        usename,
-        usesysid,
-        useconnlimit,
-        usecreatedb,
-        passwd,
-        usesuper,
-        valuntil
+        usename as user_name,
+        usesysid as user_id,
+        NULLIF(useconnlimit, 'UNLIMITED') as connection_limit,
+        usecreatedb as can_create_dbs,
+        passwd as can_create_dbs,
+        usesuper as is_superuser,
+        valuntil as valid_until
     FROM pg_user_info
     WHERE usename != 'rdsdb';
     """
 
-USER_COLUMN_NAME_TO_KEYWORD = {
-    "useconnlimit": "connection_limit",
-    "usecreatedb": "can_create_dbs",
-    "usesuper": "is_superuser",
-    "passwd": "password",
-    "valuntil": "valid_until",
-}
-
-USER_COLUMN_VALUES_TO_KEYWORD = {"connection_limit": {"UNLIMITED": None}}
+Q_GET_ALL_GROUPS = """
+    SELECT
+        groname as group_name,
+        grosysid as group_id,
+        grolist as member_list
+    FROM pg_group;
+    """
 
 
-def get_all_pg_user_attributes(cursor):
-    """ Return a dict with key = usename and values = all fields in pg_user_info """
-    common.run_query(cursor, Q_GET_ALL_USER_ATTRIBUTES)
-
-    all_pg_user_attributes = {row["usename"]: dict(row) for row in cursor.fetchall()}
-    return all_pg_user_attributes
-
-
-def get_user_attributes(user_attributes):
-    """ Convert pg_user_info column names to keywords for user """
-    user_attributes = {
-        USER_COLUMN_NAME_TO_KEYWORD[column_name]: value
-        for column_name, value in user_attributes.items()
-        if column_name in USER_COLUMN_NAME_TO_KEYWORD
+def get_all_pg_users(cursor):
+    """ Return a dict with key = usename and values = all other fields in pg_user
+    e.g.
+    {'test_user': {
+        'user_name': 'test_user',
+        'user_id': 100,
+        'connection_limit': 'UNLIMITED',
+        'can_create_dbs': True,
+        'can_create_dbs': '********',
+        'is_superuser': True,
+        'valid_until': None
     }
-    user_attributes = {
-        column_name: USER_COLUMN_VALUES_TO_KEYWORD.get(column_name, {}).get(
-            value, value
-        )
-        for column_name, value in user_attributes.items()
-    }
-    return user_attributes
+    """
+    common.run_query(cursor, Q_GET_ALL_USERS)
+
+    all_pg_users = {row["user_name"]: dict(row) for row in cursor.fetchall()}
+    return all_pg_users
 
 
-def get_all_user_attributes(cursor):
-    """ Return a dict with key = username and values = in  """
-    all_pg_user_attributes = get_all_pg_user_attributes(cursor)
-    all_user_attributes = {
-        user: get_user_attributes(pg_attributes)
-        for user, pg_attributes in all_pg_user_attributes.items()
+def get_all_pg_groups(cursor):
+    """ Return a dict with key = groupname and values = all other fields in pg_group"""
+    common.run_query(cursor, Q_GET_ALL_GROUPS)
+
+    all_pg_groups = {row["group_name"]: dict(row) for row in cursor.fetchall()}
+    return all_pg_groups
+
+
+def get_memberships(pg_users, pg_groups):
+    """ Return a list of tuples, where each tuple is (member, group) """
+    groups = {
+        group: attributes["member_list"] for group, attributes in pg_groups.items()
     }
-    return all_user_attributes
+
+    """ Now get the user ids"""
+    user_ids = {attributes["user_id"]: user for user, attributes in pg_users.items()}
+
+    """ Transform into a list of tuples, where each tuple is (membername, groupname) """
+    all_memberships = []
+    for group, member_ids in groups.items():
+        if not member_ids:
+            continue
+        for member_id in member_ids:
+            user_name = user_ids.get(member_id)
+            all_memberships.append((user_name, group))
+
+    user_memberships = {}
+    for user, group in all_memberships:
+        if user not in user_memberships:
+            user_memberships[user] = []
+        user_memberships[user].append(group)
+    return user_memberships
+
+
+def get_all_group_attributes(cursor):
+    """ Return a dict with key = groupname and values dictionary of attributes"""
+    all_pg_group_attributes = get_all_pg_group_attributes(cursor)
+    all_group_attributes = {
+        group: get_group_attributes(pg_attributes)
+        for user, pg_attributes in all_pg_group_attributes.items()
+    }
+    return all_group_attributes
 
 
 def get_current_state(cursor):
     current_state = {}
 
-    current_state["users"] = {}
-    user_attributes = get_all_user_attributes(cursor)
+    pg_users = get_all_pg_users(cursor)
+    pg_groups = get_all_pg_groups(cursor)
 
-    # need to nest it under an 'attributes' key
-    for user, attributes in user_attributes.items():
+    # add the users to the spec
+    current_state["users"] = {user: {} for user in pg_users}
+
+    # add the attributes for each user
+    for user in current_state["users"]:
         current_state["users"][user] = {}
-        current_state["users"][user]["attributes"] = attributes
+        current_state["users"][user]["attributes"] = pg_users[user]
+
+    # add the groups
+    current_state["groups"] = {group: {} for group in pg_groups}
+
+    # now get memberships / add them
+    user_memberships = get_memberships(pg_users, pg_groups)
+
+    for user, memberships in user_memberships.items():
+        current_state["users"][user]["member_of"] = memberships
 
     return current_state
