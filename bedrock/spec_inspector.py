@@ -13,6 +13,7 @@ UNDOCUMENTED_OBJECTS_MSG = (
     "Please add these {0} to the spec file or manually remove "
     "them from your redshift cluster"
 )
+MISSING_ENVVAR_MSG = "Spec error: Required environment variable not found:\n{}"
 
 SPEC_SCHEMA_YAML = """
     users:
@@ -33,6 +34,12 @@ SPEC_SCHEMA_YAML = """
                 connection_limit:
                     nullable: True
                     type: integer
+        member_of:
+            type: list
+    groups:
+        ownerships:
+            type: list
+
 """
 
 

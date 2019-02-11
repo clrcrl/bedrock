@@ -39,6 +39,8 @@ from bedrock.context import get_current_state
 from bedrock import common
 
 from bedrock.users import get_users_sql
+from bedrock.groups import get_groups_sql
+from bedrock.memberships import get_memberships_sql
 
 import os
 
@@ -132,8 +134,16 @@ def configure(spec_path, host, port, user, password, dbname, live):
     # users
     sql_to_run.append(create_divider("users"))
     users_sql, all_password_sql_to_run = get_users_sql(spec, cursor)
+    groups_sql = get_groups_sql(spec, cursor)
+    memberships_sql = get_memberships_sql(spec, cursor)
+    # I'm not sure why we run_module_sql and then add it to sql_to_run.
+    # should defo come back and look into this
     run_module_sql(users_sql, cursor)
+    run_module_sql(groups_sql, cursor)
+    run_module_sql(memberships_sql, cursor)
     sql_to_run.extend(users_sql)
+    sql_to_run.extend(groups_sql)
+    sql_to_run.extend(memberships_sql)
 
     changed = has_changes(sql_to_run)
 

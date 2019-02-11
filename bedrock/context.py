@@ -49,7 +49,7 @@ def get_all_pg_groups(cursor):
     return all_pg_groups
 
 
-def get_memberships(pg_users, pg_groups):
+def get_all_memberships(pg_users, pg_groups):
     """ Return a list of tuples, where each tuple is (member, group) """
     groups = {
         group: attributes["member_list"] for group, attributes in pg_groups.items()
@@ -67,6 +67,10 @@ def get_memberships(pg_users, pg_groups):
             user_name = user_ids.get(member_id)
             all_memberships.append((user_name, group))
 
+    return all_memberships
+
+
+def get_user_memberships(all_memberships):
     user_memberships = {}
     for user, group in all_memberships:
         if user not in user_memberships:
@@ -102,8 +106,11 @@ def get_current_state(cursor):
     # add the groups
     current_state["groups"] = {group: {} for group in pg_groups}
 
-    # now get memberships / add them
-    user_memberships = get_memberships(pg_users, pg_groups)
+    # now get memberships
+    all_memberships = get_all_memberships(pg_users, pg_groups)
+
+    # get the version of memberships grouped by user
+    user_memberships = get_user_memberships(all_memberships)
 
     for user, memberships in user_memberships.items():
         current_state["users"][user]["member_of"] = memberships

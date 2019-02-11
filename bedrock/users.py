@@ -90,7 +90,7 @@ def get_users_sql(spec, cursor):
     all_password_sql_to_run = []
 
     spec_users = spec.get("users")
-    current_users = context.get_all_user_attributes(cursor)
+    current_users = context.get_all_pg_users(cursor)
 
     for user, spec in spec_users.items():
         spec_attributes = spec.get("attributes")
