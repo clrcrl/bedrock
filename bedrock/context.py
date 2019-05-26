@@ -4,9 +4,9 @@ Q_GET_ALL_USERS = """
     SELECT
         usename as user_name,
         usesysid as user_id,
-        NULLIF(useconnlimit, 'UNLIMITED') as connection_limit,
+        NULLIF(useconnlimit, 'UNLIMITED')::integer as connection_limit,
         usecreatedb as can_create_dbs,
-        passwd as can_create_dbs,
+        passwd as password,
         usesuper as is_superuser,
         valuntil as valid_until
     FROM pg_user_info

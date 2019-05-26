@@ -43,12 +43,13 @@ from bedrock.groups import get_groups_sql
 from bedrock.memberships import get_memberships_sql
 
 import os
-
+import click
 
 import logging
 
-
 logger = logging.getLogger(__name__)
+
+HEADER = '-- SQL EXECUTED ({} MODE)'
 
 
 def create_divider(section):
@@ -121,6 +122,7 @@ def configure(spec_path, host, port, user, password, dbname, live):
 
         live - bool; whether to apply the changes (True) or just show what changes
             would be made without actually appyling them (False)
+
     """
     db_connection = common.get_db_connection(host, port, dbname, user, password)
     cursor = db_connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -144,7 +146,6 @@ def configure(spec_path, host, port, user, password, dbname, live):
     sql_to_run.extend(users_sql)
     sql_to_run.extend(groups_sql)
     sql_to_run.extend(memberships_sql)
-
     changed = has_changes(sql_to_run)
 
     if changed and live:
@@ -152,3 +153,11 @@ def configure(spec_path, host, port, user, password, dbname, live):
         db_connection.commit()
     else:
         db_connection.rollback()
+        
+    # Make sure there is at least 1 line with a real change (vs. all headers)
+    if changed:
+        click.secho(HEADER.format('LIVE' if live else 'CHECK'), fg='green')
+        for statement in sql_to_run:
+            click.secho(statement)
+    else:
+        click.secho(SUCCESS_MSG, fg='green')
